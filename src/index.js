@@ -1,68 +1,68 @@
 const express = require("express");
+const cors = require("cors");
 const profileSchema = require("../schmas");
 const dotenv = require("dotenv");
+const { json } = require("express");
 require("../dbConfig");
-dotenv.config({path:'./config.env'})
+dotenv.config({ path: './config.env' })
 
 const app = express();
+app.use(cors())
 app.use(express.json());
 
-const port  = process.env.PORT || 5000
+const port = process.env.PORT || 5000
 
 
 app.get("/list", async (req, resp) => {
     let data = await profileSchema.find();
     console.log(data);
     if (data != 0) {
-        resp.status(200).send(data)
+        resp.status(200).json(data)
     } else {
-        resp.status(404).send("data not found") 
+        resp.status(404).json({ "data": "data not found" });
     }
 });
 
-app.delete("/delete", async (req, resp) => {   
-    let data = await profileSchema.deleteOne({
-        'title': req.query.title.toString(),
-    });
-    console.log(req.query.name);
+app.delete("/delete", async (req, resp) => {
+    let data = await profileSchema.findByIdAndDelete(req.query.id);
     console.log(data);
-    if (data.acknowledged == true && data.deletedCount != 0) {
-        resp.status(200).send(data)
-    } else {
-        resp.status(404).send('data is not deleted')
+    try{
+        resp.status(200).json({"msg":"data deleted successfully"});
+    } catch (e) {
+        resp.status(404).json(e);
     }
 });
 
 
 
-app.post('/create', async function (req, resp) {
+app.post('/create', async (req, resp) => {
     let data = await new profileSchema(req.body);
     let result = await data.save();
     if (data.__v == 0) {
-        resp.status(200).send()
+        resp.status(200).json(result);
         console.log(result);
     } else {
-        resp.status(404).send('data is not created')
+        resp.status(404).json({"msg":'data is not created'});
     }
 
 });
 
 
 app.put("/update", async (req, resp) => {
-    let data = await profileSchema.updateOne(
-        { 'title': req.query.name.toString(), },
-        { $set: req.body }
+    let data = await profileSchema.findByIdAndUpdate(
+        req.query.id,
+        { $set: req.body },
+        { new: true }
     );
-    if (data.acknowledged == true && data.modifiedCount != 0
-        && data.matchedCount != 0) {
+    try {
         resp.status(200).send(data)
         console.log(data);
-    } else {
-        resp.status(404).send('data is not update')
+    } catch (e) {
+        resp.status(404).json({"msg":"error"})
     }
 });
 
-app.get('*', async (req,res)=>{
+app.get('*', async (req, res) => {
     res.send(`<h1 align='center'> 404 <h2>`)
 })
 
